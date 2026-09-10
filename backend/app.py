@@ -35,11 +35,16 @@ async def lifespan(app: FastAPI):
     # Shutdown
     await close_mongo_connection()
 
+from fastapi.middleware.gzip import GZipMiddleware
+
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
     lifespan=lifespan
 )
+
+# GZip compression for ultra-fast transfers
+app.add_middleware(GZipMiddleware, minimum_size=500)
 
 # CORS middleware for open campus client access
 app.add_middleware(
