@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Campus Lost & Found | Multimodal AI Vector Matching Engine</title>
+  <!-- Google Fonts: Inter & Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            display: ['Outfit', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-screen flex flex-col font-sans antialiased selection:bg-indigo-500 selection:text-white">
+
+  <!-- Fixed Frosted Glass Navbar -->
+  <header class="fixed top-0 left-0 right-0 z-40 glass-nav border-b border-slate-200/80 dark:border-slate-800/80 shadow-xs">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <a href="/" class="flex items-center gap-2.5 group">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-sky-400 flex items-center justify-center text-white shadow-md shadow-indigo-500/20 group-hover:scale-105 transition-transform">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+          </div>
+          <div>
+            <span class="font-display font-bold text-lg tracking-tight text-slate-900 dark:text-white flex items-center gap-1.5">
+              CampusMatch <span class="text-xs px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-semibold">AI CLIP</span>
+            </span>
+            <p class="text-[10px] text-slate-400 -mt-0.5 tracking-wide">University Lost & Found Matching Engine</p>
+          </div>
+        </a>
+      </div>
+
+      <nav class="hidden md:flex items-center gap-1">
+        <a href="/" class="px-3.5 py-2 text-xs font-semibold text-indigo-600 dark:text-indigo-400 rounded-lg bg-indigo-50/80 dark:bg-indigo-950/50">Dashboard</a>
+        <a href="/browse" class="px-3.5 py-2 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Browse Catalog</a>
+        <a href="/matcher" class="px-3.5 py-2 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center gap-1">
+          <svg class="w-3.5 h-3.5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+          Visual Matcher
+        </a>
+      </nav>
+
+      <div class="flex items-center gap-3">
+        <!-- Active Status Pill -->
+        <div class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 text-xs font-medium text-slate-700 dark:text-slate-300">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span id="nav-active-count">Loading...</span>
+        </div>
+
+        <!-- Report Item Action -->
+        <button class="open-report-modal px-4 py-2 text-xs font-bold rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white shadow-md shadow-indigo-500/25 transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center gap-1.5">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+          Report Item
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Body -->
+  <main class="flex-grow pt-24 pb-16">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+      <!-- Hero Section -->
+      <section class="relative rounded-3xl overflow-hidden bg-gradient-to-b from-indigo-900 via-indigo-950 to-slate-950 text-white p-8 sm:p-12 mb-10 shadow-2xl border border-indigo-800/40">
+        <div class="absolute -right-20 -top-20 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute -left-20 -bottom-20 w-96 h-96 bg-sky-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+        <div class="relative z-10 max-w-3xl">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 text-xs font-medium mb-4 backdrop-blur-sm">
+            <span class="w-2 h-2 rounded-full bg-indigo-400 animate-ping"></span>
+            Multimodal Hybrid Scoring: 70% Vector + 20% Category + 10% Location
+          </div>
+
+          <h1 class="font-display text-3xl sm:text-5xl font-extrabold tracking-tight text-white leading-tight">
+            Lost Something on Campus? <br class="hidden sm:inline">
+            <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 via-sky-200 to-emerald-300">
+              Find It Instantly with Visual AI.
+            </span>
+          </h1>
+
+          <p class="mt-4 text-sm sm:text-base text-indigo-200/80 leading-relaxed max-w-2xl">
+            When you report or photograph an item, our engine computes normalized 512-dim OpenAI CLIP representations, partitions active queries against MongoDB Atlas Vector Search, and calculates composite confidence scores to reunite items in seconds.
+          </p>
+
+          <!-- Quick Action Buttons -->
+          <div class="mt-8 flex flex-wrap items-center gap-3 sm:gap-4">
+            <button class="open-report-modal px-5 py-3 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs sm:text-sm shadow-lg shadow-rose-500/30 transition-all hover:scale-[1.02] flex items-center gap-2" data-default-type="LOST">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+              I Lost Something
+            </button>
+            <button class="open-report-modal px-5 py-3 rounded-xl bg-sky-500 hover:bg-sky-600 text-white font-bold text-xs sm:text-sm shadow-lg shadow-sky-500/30 transition-all hover:scale-[1.02] flex items-center gap-2" data-default-type="FOUND">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              I Found Something
+            </button>
+            <a href="/matcher" class="px-5 py-3 rounded-xl bg-white/10 hover:bg-white/15 text-white font-semibold text-xs sm:text-sm border border-white/20 backdrop-blur-md transition-all flex items-center gap-2">
+              <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+              Visual Photo Matcher
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <!-- Campus Stats Bar -->
+      <section class="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4 mb-8">
+        <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-xs">
+          <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Active Campus Items</p>
+          <p id="stat-total-active" class="text-2xl sm:text-3xl font-display font-extrabold text-slate-900 dark:text-white mt-1">-</p>
+        </div>
+        <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-xs">
+          <p class="text-[11px] font-semibold text-rose-500 uppercase tracking-wider">Active Lost</p>
+          <p id="stat-total-lost" class="text-2xl sm:text-3xl font-display font-extrabold text-rose-600 dark:text-rose-400 mt-1">-</p>
+        </div>
+        <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-xs">
+          <p class="text-[11px] font-semibold text-sky-500 uppercase tracking-wider">Active Found</p>
+          <p id="stat-total-found" class="text-2xl sm:text-3xl font-display font-extrabold text-sky-600 dark:text-sky-400 mt-1">-</p>
+        </div>
+        <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-xs">
+          <p class="text-[11px] font-semibold text-emerald-500 uppercase tracking-wider">Reunited / Claimed</p>
+          <p id="stat-total-claimed" class="text-2xl sm:text-3xl font-display font-extrabold text-emerald-600 dark:text-emerald-400 mt-1">-</p>
+        </div>
+        <div class="col-span-2 md:col-span-1 bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-xs flex flex-col justify-between">
+          <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Vector Storage</p>
+          <div id="mongo-status-badge" class="mt-2">
+            <span class="text-xs text-slate-400">Checking...</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Catalog Controls & Filters -->
+      <section class="bg-white dark:bg-slate-800 rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-700/80 shadow-xs mb-8">
+        <div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
+          <!-- Filter Tabs -->
+          <div class="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-900 rounded-xl overflow-x-auto">
+            <button class="filter-btn px-4 py-2 rounded-lg text-xs font-bold transition-all bg-indigo-600 text-white shadow-xs" data-filter="ALL">All Items</button>
+            <button class="filter-btn px-4 py-2 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white" data-filter="LOST">Lost Only</button>
+            <button class="filter-btn px-4 py-2 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white" data-filter="FOUND">Found Only</button>
+          </div>
+
+          <!-- Search & Selects -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 flex-1 lg:max-w-2xl">
+            <div class="relative">
+              <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+              <input type="text" id="catalog-search" placeholder="Search title, brand, tag..." class="w-full pl-9 pr-4 py-2 rounded-xl text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-200">
+            </div>
+            <select id="filter-category" class="category-dropdown w-full px-3 py-2 rounded-xl text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500" data-is-filter="true">
+              <option value="">All Categories</option>
+            </select>
+            <select id="filter-location" class="location-dropdown w-full px-3 py-2 rounded-xl text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500" data-is-filter="true">
+              <option value="">All Campus Locations</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <!-- Items Grid Section -->
+      <section>
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="font-display text-lg font-bold text-slate-900 dark:text-white">Active Campus Catalog</h2>
+          <span id="filtered-count" class="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">0 items</span>
+        </div>
+
+        <div id="items-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <!-- Populated by JavaScript -->
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- ----------------- MODALS & DRAWERS ----------------- -->
+
+  <!-- Report Item Modal (2 Columns) -->
+  <div id="report-modal" class="fixed inset-0 z-50 hidden overflow-y-auto">
+    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" id="close-report-modal-backdrop"></div>
+    <div class="flex min-h-full items-center justify-center p-4">
+      <div class="relative w-full max-w-4xl bg-white dark:bg-slate-800 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+        
+        <!-- Header -->
+        <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+          <div>
+            <h3 class="font-display text-lg font-bold text-slate-900 dark:text-white">Report Campus Item</h3>
+            <p class="text-xs text-slate-400">Our multimodal CLIP AI will immediately scan opposite catalog items for candidate matches.</p>
+          </div>
+          <button id="close-report-modal" class="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+          </button>
+        </div>
+
+        <!-- 2-Column Form -->
+        <form id="report-form" class="p-6">
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+            <!-- Left Column: Drag & Drop Dropzone (5 cols) -->
+            <div class="lg:col-span-5 flex flex-col">
+              <label class="text-xs font-bold text-slate-700 dark:text-slate-300 mb-2 flex items-center justify-between">
+                <span>Item Photograph</span>
+                <span class="text-[11px] text-slate-400 font-normal">Max 8MB (JPG, PNG)</span>
+              </label>
+
+              <div id="image-dropzone" class="flex-1 min-h-[260px] border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-2xl p-4 flex flex-col items-center justify-center text-center cursor-pointer hover:border-indigo-500 transition-colors relative bg-slate-50 dark:bg-slate-900/40">
+                <input type="file" id="image-input" name="image" accept="image/*" class="hidden">
+                
+                <!-- Prompt State -->
+                <div id="dropzone-prompt" class="flex flex-col items-center">
+                  <div class="w-14 h-14 mb-3 rounded-2xl bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shadow-inner">
+                    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                  </div>
+                  <p class="text-xs font-bold text-slate-800 dark:text-slate-200">Drag & drop photo here</p>
+                  <p class="text-[11px] text-slate-400 mt-1">or click to browse local files</p>
+                  <span class="mt-4 px-3 py-1 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[10px] text-slate-500 font-semibold shadow-xs">
+                    Embeds with CLIP ViT-B/32
+                  </span>
+                </div>
+
+                <!-- Preview State -->
+                <div id="dropzone-preview" class="hidden w-full h-full relative rounded-xl overflow-hidden group">
+                  <img id="preview-image" src="" alt="Preview" class="w-full h-full object-cover">
+                  <button type="button" id="remove-preview-btn" class="absolute top-2 right-2 p-1.5 rounded-lg bg-black/70 text-white hover:bg-rose-600 transition-colors shadow-md">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Column: Metadata & Details (7 cols) -->
+            <div class="lg:col-span-7 flex flex-col gap-4">
+
+              <!-- Toggle: Lost vs Found -->
+              <div>
+                <label class="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1.5">Report Classification</label>
+                <div class="flex p-1 bg-slate-100 dark:bg-slate-900 rounded-2xl gap-1">
+                  <button type="button" class="report-type-toggle flex-1 py-2.5 px-4 rounded-xl text-xs font-bold transition-all shadow-xs bg-rose-600 text-white" data-type="LOST">
+                    [ I Lost Something ]
+                  </button>
+                  <button type="button" class="report-type-toggle flex-1 py-2.5 px-4 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 transition-all" data-type="FOUND">
+                    [ I Found Something ]
+                  </button>
+                </div>
+              </div>
+
+              <!-- Category & Location -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label class="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Item Category *</label>
+                  <select name="category" required class="category-dropdown w-full px-3.5 py-2.5 rounded-xl text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500" data-is-filter="false">
+                    <!-- Loaded dynamically -->
+                  </select>
+                </div>
+                <div>
+                  <label class="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Campus Location *</label>
+                  <select name="location" required class="location-dropdown w-full px-3.5 py-2.5 rounded-xl text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500" data-is-filter="false">
+                    <!-- Loaded dynamically -->
+                  </select>
+                </div>
+              </div>
+
+              <!-- Title -->
+              <div>
+                <label class="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Item Title *</label>
+                <input type="text" name="title" required placeholder="e.g., Midnight Blue Hydro Flask 32oz with sticker" class="w-full px-3.5 py-2.5 rounded-xl text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              </div>
+
+              <!-- Description & Tags -->
+              <div>
+                <label class="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Description & Distinguishing Marks *</label>
+                <textarea name="description" rows="3" required placeholder="Describe brand, color, dents, scratches, stickers, or specific room numbers..." class="w-full px-3.5 py-2.5 rounded-xl text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label class="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Keywords / Tags (comma separated)</label>
+                  <input type="text" name="tags" placeholder="e.g. blue, metallic, flask, dented" class="w-full px-3.5 py-2.5 rounded-xl text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div>
+                  <label class="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Your Name / Dept</label>
+                  <input type="text" name="contact_name" placeholder="e.g. Alex (CS Sophomore)" class="w-full px-3.5 py-2.5 rounded-xl text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+              </div>
+
+              <!-- Contact Info -->
+              <div>
+                <label class="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Contact Info (Student Email / Phone / Student ID) *</label>
+                <input type="text" name="contact_info" required placeholder="e.g., alex.r@campus.edu or +1 (555) 019-2834" class="w-full px-3.5 py-2.5 rounded-xl text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <p class="text-[10px] text-slate-400 mt-1">Kept confidential until another student claims this verified item.</p>
+              </div>
+
+              <!-- Submit Button -->
+              <div class="pt-3">
+                <button type="submit" id="report-submit-btn" class="w-full py-3.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm shadow-lg shadow-indigo-600/30 transition-all hover:scale-[1.01] active:scale-[0.99]">
+                  <span class="flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    Analyze & Search Found Matches
+                  </span>
+                </button>
+              </div>
+
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Post-Submit Live Match Results Drawer -->
+  <div id="match-drawer" class="fixed inset-0 z-50 hidden overflow-hidden">
+    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onclick="closeMatchDrawer()"></div>
+    <div class="fixed inset-y-0 right-0 max-w-full flex pl-10">
+      <div class="w-screen max-w-2xl bg-white dark:bg-slate-800 shadow-2xl border-l border-slate-200 dark:border-slate-700 flex flex-col">
+        
+        <!-- Drawer Header -->
+        <div class="px-6 py-5 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between bg-slate-50 dark:bg-slate-900/50">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl bg-emerald-500 text-white flex items-center justify-center shadow-md">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            </div>
+            <div>
+              <h3 class="font-display text-base font-bold text-slate-900 dark:text-white">Multimodal Vector Match Results</h3>
+              <p class="text-xs text-slate-500">Cross-queried against opposite campus inventory</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <span id="match-count-badge" class="px-2.5 py-1 text-xs font-bold rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300">
+              0 Matches
+            </span>
+            <button onclick="closeMatchDrawer()" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Drawer Content Body (Scrollable) -->
+        <div class="flex-1 overflow-y-auto p-6 space-y-6">
+          <!-- Submitted Item Preview -->
+          <div>
+            <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Your Submitted Item</h4>
+            <div id="match-drawer-submitted">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+
+          <!-- Top Ranked Candidate Matches -->
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Top Candidate Matches (Ranked by Confidence)</h4>
+              <span class="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">≥ 82% = High Confidence</span>
+            </div>
+            <div id="match-drawer-candidates" class="space-y-4">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Drawer Footer -->
+        <div class="p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 flex items-center justify-between">
+          <span class="text-xs text-slate-400">Indexed in MongoDB Atlas Vector Search</span>
+          <button onclick="closeMatchDrawer()" class="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold">
+            Done & View Catalog
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Contact Revelation Modal -->
+  <div id="contact-modal" class="fixed inset-0 z-50 hidden overflow-y-auto">
+    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeContactModal()"></div>
+    <div class="flex min-h-full items-center justify-center p-4">
+      <div class="relative w-full max-w-md bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-slate-700 text-center">
+        <div class="w-14 h-14 mx-auto mb-4 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-300 flex items-center justify-center">
+          <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+        </div>
+        <h3 class="font-display text-lg font-bold text-slate-900 dark:text-white">Item Claimed & Reunited!</h3>
+        <p id="contact-item-title" class="text-xs text-slate-500 mt-1 font-medium"></p>
+        
+        <div class="mt-5 p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-left">
+          <p class="text-[11px] font-semibold text-slate-400 uppercase">Reporter Contact Name</p>
+          <p id="contact-name-val" class="text-sm font-bold text-slate-800 dark:text-slate-100 mt-0.5"></p>
+          
+          <p class="text-[11px] font-semibold text-slate-400 uppercase mt-3">Direct Contact Channel</p>
+          <p id="contact-info-val" class="text-sm font-bold text-indigo-600 dark:text-indigo-400 mt-0.5 break-all"></p>
+        </div>
+
+        <button onclick="closeContactModal()" class="w-full mt-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md">
+          Close Window
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Single Item Detail Modal -->
+  <div id="detail-modal" class="fixed inset-0 z-50 hidden overflow-y-auto">
+    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeItemDetail()"></div>
+    <div class="flex min-h-full items-center justify-center p-4">
+      <div class="relative w-full max-w-2xl bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-slate-700">
+        <button onclick="closeItemDetail()" class="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+        <div id="detail-modal-content">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3.5 rounded-xl shadow-2xl text-white font-medium transition-all duration-300 transform translate-y-10 opacity-0 pointer-events-none bg-slate-800">
+    <span id="toast-icon">✓</span>
+    <span id="toast-msg">Notification</span>
+  </div>
+
+  <!-- Footer -->
+  <footer class="mt-auto border-t border-slate-200/80 dark:border-slate-800/80 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md py-6">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-xs text-slate-400 flex flex-col sm:flex-row items-center justify-between gap-2">
+      <p>© 2026 CampusMatch Engine • Multimodal CLIP ViT-B/32 + MongoDB Atlas Vector Search</p>
+      <div class="flex items-center gap-4">
+        <a href="/" class="hover:text-indigo-500">Dashboard</a>
+        <a href="/browse" class="hover:text-indigo-500">Browse</a>
+        <a href="/matcher" class="hover:text-indigo-500">Visual Matcher</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
