@@ -50,11 +50,30 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount media directories
-app.mount("/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="uploads")
-app.mount("/sample_assets", StaticFiles(directory=str(SAMPLE_DIR)), name="sample_assets")
+# Mount media directories safely
+try:
+    UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+    app.mount("/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="uploads")
+except Exception:
+    pass
+
+try:
+    SAMPLE_DIR.mkdir(parents=True, exist_ok=True)
+    app.mount("/sample_assets", StaticFiles(directory=str(SAMPLE_DIR)), name="sample_assets")
+except Exception:
+    pass
+
 if (FRONTEND_DIR / "static").exists():
     app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR / "static")), name="static")
+
+@app.middleware("http")
+async def db_connection_middleware(request, call_next):
+    if not db_manager.is_connected:
+        try:
+            await connect_to_mongo()
+        except Exception:
+            pass
+    return await call_next(request)
 
 # ----------------- API ENDPOINTS -----------------
 
