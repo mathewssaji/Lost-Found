@@ -7,10 +7,24 @@ load_dotenv()
 # Base Paths
 BASE_DIR = Path(__file__).resolve().parent.parent
 BACKEND_DIR = Path(__file__).resolve().parent
-UPLOADS_DIR = BASE_DIR / "uploads"
-UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
-SAMPLE_DIR = BASE_DIR / "sample_assets"
-SAMPLE_DIR.mkdir(parents=True, exist_ok=True)
+
+is_serverless = bool(os.getenv("VERCEL") or os.getenv("AWS_LAMBDA_FUNCTION_NAME"))
+if is_serverless:
+    UPLOADS_DIR = Path("/tmp/uploads")
+    SAMPLE_DIR = BASE_DIR / "sample_assets"
+else:
+    UPLOADS_DIR = BASE_DIR / "uploads"
+    SAMPLE_DIR = BASE_DIR / "sample_assets"
+
+try:
+    UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+except Exception:
+    pass
+
+try:
+    SAMPLE_DIR.mkdir(parents=True, exist_ok=True)
+except Exception:
+    pass
 
 class Settings:
     # App Settings
