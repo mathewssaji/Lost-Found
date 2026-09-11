@@ -90,8 +90,43 @@ async def health_check():
         "status": "healthy",
         "mongo_connected": db_manager.is_connected,
         "clip_ready": ml_engine.is_loaded,
+        "gemini_active": bool(settings.GEMINI_API_KEY),
         "using_fallback_encoder": ml_engine.use_fallback,
         "items_in_store": len(in_memory_items)
+    }
+
+@app.post("/api/ai/analyze-image")
+async def ai_analyze_image(image: UploadFile = File(...)):
+    """
+    Analyzes an uploaded item image with Google Gemini Multimodal Vision AI
+    to automatically extract Title, Description, Category, and Tags.
+    """
+    if not image or not image.filename:
+        raise HTTPException(status_code=400, detail="No image file provided.")
+
+    contents = await image.read()
+    if len(contents) > 8 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Image exceeds 8MB limit.")
+
+    analysis = ml_engine.analyze_image_with_gemini(contents)
+    if not analysis:
+        filename_clean = Path(image.filename).stem.replace("_", " ").replace("-", " ")
+        return {
+            "success": False,
+            "title": filename_clean.title(),
+            "description": "Item photo uploaded.",
+            "category": "Other",
+            "tags": ["campus"],
+            "model": "fallback"
+        }
+
+    return {
+        "success": True,
+        "title": analysis.get("title", ""),
+        "description": analysis.get("description", ""),
+        "category": analysis.get("category", "Other"),
+        "tags": analysis.get("tags", []),
+        "model": "gemini-3.6-flash"
     }
 
 @app.get("/api/stats", response_model=StatsResponse)
