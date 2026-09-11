@@ -12,28 +12,56 @@ try:
 except Exception:
     pass
 
+import time
+import asyncio
+
+try:
+    import certifi
+    ca_file = certifi.where()
+except Exception:
+    ca_file = None
+
 logger = logging.getLogger("campus_lost_found.database")
 
 class Database:
     client: Optional[AsyncIOMotorClient] = None
     db: Optional[AsyncIOMotorDatabase] = None
     is_connected: bool = False
+    is_connecting: bool = False
+    last_attempt_time: float = 0.0
 
 db_manager = Database()
 
 async def connect_to_mongo():
+    if db_manager.is_connected:
+        return
+    if db_manager.is_connecting:
+        return
+
+    now = time.time()
+    if now - db_manager.last_attempt_time < 30.0:
+        return
+
+    db_manager.is_connecting = True
+    db_manager.last_attempt_time = now
     logger.info(f"Connecting to MongoDB at {settings.MONGODB_URI}...")
     try:
+        kwargs = {
+            "serverSelectionTimeoutMS": 2500,
+            "connectTimeoutMS": 2500,
+            "maxPoolSize": 50,
+            "minPoolSize": 1,
+        }
+        if ca_file:
+            kwargs["tlsCAFile"] = ca_file
+
         db_manager.client = AsyncIOMotorClient(
             settings.MONGODB_URI,
-            serverSelectionTimeoutMS=10000,
-            connectTimeoutMS=10000,
-            maxPoolSize=50,
-            minPoolSize=5
+            **kwargs
         )
         db_manager.db = db_manager.client[settings.DB_NAME]
-        # Ping the server to verify connection
-        await db_manager.client.admin.command('ping')
+        # Ping server with short timeout
+        await asyncio.wait_for(db_manager.client.admin.command('ping'), timeout=2.5)
         db_manager.is_connected = True
         logger.info(f"Connected to MongoDB database '{settings.DB_NAME}' successfully.")
         
@@ -48,9 +76,11 @@ async def connect_to_mongo():
     except Exception as e:
         logger.warning(
             f"MongoDB connection notice: Could not connect to {settings.MONGODB_URI} ({e}). "
-            "Backend will maintain in-memory fallback store if MongoDB is offline or until MongoDB Atlas URI is provided."
+            "Engine will maintain ultra-fast in-memory fallback store until MongoDB Atlas Network Access is enabled."
         )
         db_manager.is_connected = False
+    finally:
+        db_manager.is_connecting = False
 
 async def close_mongo_connection():
     if db_manager.client:
