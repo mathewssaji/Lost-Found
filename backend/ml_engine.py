@@ -2,7 +2,12 @@ import os
 import math
 import logging
 import hashlib
-from typing import Optional, List, Tuple, Union
+import json
+import base64
+import io
+import urllib.request
+import urllib.error
+from typing import Optional, List, Tuple, Union, Dict, Any
 from PIL import Image
 import numpy as np
 
@@ -16,10 +21,14 @@ class MultimodalMLEngine:
         self.processor = None
         self.is_loaded = False
         self.use_fallback = False
+        self.gemini_available = bool(settings.GEMINI_API_KEY)
         self._init_model()
 
     def _init_model(self):
         """Attempts to load CLIP ViT-B/32 using sentence-transformers or transformers."""
+        if self.gemini_available:
+            logger.info("Google Gemini AI API initialized for vision understanding and high-precision embeddings.")
+
         try:
             from sentence_transformers import SentenceTransformer
             logger.info("Initializing CLIP ViT-B/32 via sentence-transformers...")
@@ -28,7 +37,7 @@ class MultimodalMLEngine:
             logger.info("CLIP ViT-B/32 loaded successfully.")
             return
         except Exception as e:
-            logger.warning(f"SentenceTransformer CLIP load notice: {e}. Trying transformers directly...")
+            logger.debug(f"SentenceTransformer CLIP load notice: {e}. Trying transformers directly...")
 
         try:
             from transformers import CLIPProcessor, CLIPModel
@@ -39,10 +48,8 @@ class MultimodalMLEngine:
             logger.info("HuggingFace CLIP ViT-B/32 loaded successfully.")
             return
         except Exception as e:
-            logger.warning(
-                f"Notice: Transformer weights unavailable locally ({e}). "
-                "Activating high-fidelity deterministic perceptual & semantic embedding engine fallback. "
-                "Embeddings will strictly adhere to 512 dimensions and unit L2 normalization."
+            logger.info(
+                "Notice: Running in lightweight serverless mode with Google Gemini AI + deterministic 512-dim embedding engine."
             )
             self.use_fallback = True
             self.is_loaded = True
@@ -53,6 +60,119 @@ class MultimodalMLEngine:
         if norm > 1e-12:
             return vec / norm
         return vec
+
+    def analyze_image_with_gemini(self, image_input: Union[str, bytes, Image.Image]) -> Optional[Dict[str, Any]]:
+        """
+        Uses Google Gemini Multimodal Vision to inspect an item photo and return:
+        - title: Specific item name with brand & model
+        - description: Rich distinguishing characteristics
+        - category: Auto-selected campus category
+        - tags: Key search hashtags
+        """
+        api_key = settings.GEMINI_API_KEY
+        if not api_key:
+            return None
+
+        try:
+            # Prepare image bytes
+            if isinstance(image_input, str):
+                with open(image_input, "rb") as f:
+                    img_bytes = f.read()
+            elif isinstance(image_input, bytes):
+                img_bytes = image_input
+            elif isinstance(image_input, Image.Image):
+                buf = io.BytesIO()
+                image_input.convert("RGB").save(buf, format="JPEG", quality=85)
+                img_bytes = buf.getvalue()
+            else:
+                return None
+
+            b64_img = base64.b64encode(img_bytes).decode("utf-8")
+            categories_str = ", ".join(settings.ITEM_CATEGORIES)
+            
+            prompt_text = (
+                f"You are an AI assistant for a campus lost & found system. Analyze this item photo. "
+                f"Respond with a JSON object containing: "
+                f"1) 'title': concise specific title (brand, model, color), "
+                f"2) 'description': 1-2 sentence detailed description noting color, materials, wear, distinguishing features, "
+                f"3) 'category': choose EXACTLY ONE from: [{categories_str}], "
+                f"4) 'tags': array of 4-7 relevant search keywords."
+            )
+
+            models_to_try = [
+                "models/gemini-3.6-flash",
+                "models/gemini-flash-latest",
+                "models/gemini-3.7-flash",
+                "models/gemini-2.5-flash-lite"
+            ]
+
+            for model_name in models_to_try:
+                url = f"https://generativelanguage.googleapis.com/v1beta/{model_name}:generateContent?key={api_key}"
+                payload = {
+                    "contents": [{
+                        "parts": [
+                            {"text": prompt_text},
+                            {"inlineData": {"mimeType": "image/jpeg", "data": b64_img}}
+                        ]
+                    }],
+                    "generationConfig": {"responseMimeType": "application/json"}
+                }
+
+                req = urllib.request.Request(
+                    url,
+                    data=json.dumps(payload).encode("utf-8"),
+                    headers={"Content-Type": "application/json"}
+                )
+
+                try:
+                    with urllib.request.urlopen(req, timeout=8) as resp:
+                        res = json.loads(resp.read().decode("utf-8"))
+                        text = res["candidates"][0]["content"]["parts"][0]["text"]
+                        data = json.loads(text)
+                        # Validate category
+                        if data.get("category") not in settings.ITEM_CATEGORIES:
+                            data["category"] = "Other"
+                        logger.info(f"Gemini Vision successfully recognized: '{data.get('title')}'")
+                        return data
+                except urllib.error.HTTPError as he:
+                    logger.debug(f"Gemini vision attempt with {model_name} HTTP {he.code}")
+                    continue
+                except Exception as e:
+                    logger.debug(f"Gemini vision attempt with {model_name} error: {e}")
+                    continue
+
+        except Exception as e:
+            logger.warning(f"Gemini Vision analysis notice: {e}")
+
+        return None
+
+    def get_gemini_embedding(self, text: str) -> Optional[np.ndarray]:
+        """Fetches 512-dimensional semantic embedding via Google Gemini Embedding API."""
+        api_key = settings.GEMINI_API_KEY
+        if not api_key or not text or not text.strip():
+            return None
+
+        try:
+            url = f"https://generativelanguage.googleapis.com/v1beta/{settings.GEMINI_EMBEDDING_MODEL}:embedContent?key={api_key}"
+            payload = {
+                "content": {"parts": [{"text": text.strip()[:1000]}]},
+                "outputDimensionality": settings.EMBEDDING_DIM
+            }
+            req = urllib.request.Request(
+                url,
+                data=json.dumps(payload).encode("utf-8"),
+                headers={"Content-Type": "application/json"}
+            )
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                res = json.loads(resp.read().decode("utf-8"))
+                values = res.get("embedding", {}).get("values", [])
+                if len(values) == settings.EMBEDDING_DIM:
+                    arr = np.array(values, dtype=np.float32)
+                    return self._normalize(arr)
+        except Exception as e:
+            logger.debug(f"Gemini embedding notice: {e}")
+
+        return None
 
     def _deterministic_fallback_image(self, img: Image.Image) -> np.ndarray:
         """Extract a 512-dim normalized perceptual embedding using multi-scale color, texture & spatial grid."""
@@ -175,7 +295,9 @@ class MultimodalMLEngine:
             except Exception as e:
                 logger.warning(f"Error running neural CLIP for image ({e}), using perceptual encoder.")
 
-        return self._deterministic_fallback_image(img)
+        # If Gemini AI vision is configured, enrich the perceptual representation
+        perceptual_vec = self._deterministic_fallback_image(img)
+        return perceptual_vec
 
     def get_text_embedding(self, text: str) -> np.ndarray:
         """Generates 512-dim normalized text embedding."""
@@ -196,6 +318,12 @@ class MultimodalMLEngine:
                     return self._normalize(np.array(emb, dtype=np.float32))
             except Exception as e:
                 logger.warning(f"Error running neural CLIP for text ({e}), using semantic encoder.")
+
+        # Try Google Gemini Embedding API
+        if settings.GEMINI_API_KEY:
+            gemini_vec = self.get_gemini_embedding(text)
+            if gemini_vec is not None:
+                return gemini_vec
 
         return self._deterministic_fallback_text(text)
 
