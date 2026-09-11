@@ -21,6 +21,7 @@ const API = {
   claimItem: (id) => fetch(`/api/items/${id}/claim`, { method: 'POST' }).then(r => r.json()),
   reportItem: (formData) => fetch('/api/items', { method: 'POST', body: formData }).then(r => r.json()),
   scanVisual: (formData) => fetch('/api/match/scan', { method: 'POST', body: formData }).then(r => r.json()),
+  analyzeImage: (formData) => fetch('/api/ai/analyze-image', { method: 'POST', body: formData }).then(r => r.json()),
 };
 
 // Global App State
@@ -433,6 +434,45 @@ function setupDropzone() {
       fileInput.value = '';
       preview.classList.add('hidden');
       promptContainer.classList.remove('hidden');
+    });
+  }
+
+  const geminiBtn = document.getElementById('gemini-autofill-btn');
+  const geminiBtnText = document.getElementById('gemini-btn-text');
+
+  if (geminiBtn) {
+    geminiBtn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      if (!window.AppState.selectedFile) return;
+
+      const origText = geminiBtnText ? geminiBtnText.textContent : '✨ Auto-Fill with Gemini AI';
+      if (geminiBtnText) geminiBtnText.textContent = 'Analyzing photo with Gemini...';
+      geminiBtn.disabled = true;
+
+      try {
+        const fd = new FormData();
+        fd.append('image', window.AppState.selectedFile);
+        const data = await API.analyzeImage(fd);
+
+        if (data && (data.title || data.description)) {
+          const titleInput = document.querySelector('#report-form input[name="title"]');
+          const descInput = document.querySelector('#report-form textarea[name="description"]');
+          const catSelect = document.querySelector('#report-form select[name="category"]');
+          const tagsInput = document.querySelector('#report-form input[name="tags"]');
+
+          if (titleInput && data.title) titleInput.value = data.title;
+          if (descInput && data.description) descInput.value = data.description;
+          if (catSelect && data.category) catSelect.value = data.category;
+          if (tagsInput && data.tags) tagsInput.value = Array.isArray(data.tags) ? data.tags.join(', ') : data.tags;
+
+          showToast(`✨ Gemini AI identified: ${data.title}`, 'success');
+        }
+      } catch (err) {
+        showToast('Gemini analysis unavailable, using default inputs.', 'error');
+      } finally {
+        if (geminiBtnText) geminiBtnText.textContent = origText;
+        geminiBtn.disabled = false;
+      }
     });
   }
 
