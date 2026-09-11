@@ -235,8 +235,12 @@
                 <!-- Preview State -->
                 <div id="dropzone-preview" class="hidden w-full h-full relative rounded-xl overflow-hidden group">
                   <img id="preview-image" src="" alt="Preview" class="w-full h-full object-cover">
-                  <button type="button" id="remove-preview-btn" class="absolute top-2 right-2 p-1.5 rounded-lg bg-black/70 text-white hover:bg-rose-600 transition-colors shadow-md">
+                  <button type="button" id="remove-preview-btn" class="absolute top-2 right-2 p-1.5 rounded-lg bg-black/70 text-white hover:bg-rose-600 transition-colors shadow-md z-10">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                  </button>
+                  <button type="button" id="gemini-autofill-btn" class="absolute bottom-2 left-2 right-2 py-2 px-3 rounded-xl bg-indigo-600/95 hover:bg-indigo-600 text-white text-xs font-bold backdrop-blur-md shadow-lg flex items-center justify-center gap-1.5 transition-all hover:scale-[1.02] active:scale-[0.98] z-10">
+                    <svg class="w-4 h-4 text-amber-300 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    <span id="gemini-btn-text">✨ Auto-Fill with Gemini AI</span>
                   </button>
                 </div>
               </div>
