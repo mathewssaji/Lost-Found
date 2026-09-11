@@ -272,7 +272,7 @@ class MultimodalMLEngine:
         return self._normalize(vec)
 
     def get_image_embedding(self, image_input: Union[str, Image.Image]) -> np.ndarray:
-        """Generates 512-dim normalized image embedding."""
+        """Generates 512-dim normalized image embedding using perceptual spatial & color features."""
         if isinstance(image_input, str):
             if not os.path.exists(image_input):
                 raise FileNotFoundError(f"Image not found: {image_input}")
@@ -280,6 +280,7 @@ class MultimodalMLEngine:
         else:
             img = image_input.convert("RGB")
 
+        # Local Neural CLIP (if installed)
         if not self.use_fallback and self.model is not None:
             try:
                 if hasattr(self.model, "encode"):  # SentenceTransformer
@@ -293,11 +294,50 @@ class MultimodalMLEngine:
                     emb = image_features.cpu().numpy().flatten()
                     return self._normalize(np.array(emb, dtype=np.float32))
             except Exception as e:
-                logger.warning(f"Error running neural CLIP for image ({e}), using perceptual encoder.")
+                logger.debug(f"Neural CLIP image notice ({e})")
 
-        # If Gemini AI vision is configured, enrich the perceptual representation
-        perceptual_vec = self._deterministic_fallback_image(img)
-        return perceptual_vec
+        # Fast perceptual spatial & color histogram embedding
+        return self._deterministic_fallback_image(img)
+
+    def explain_match_with_gemini(
+        self,
+        lost_title: str,
+        lost_desc: str,
+        found_title: str,
+        found_desc: str
+    ) -> Optional[str]:
+        """Uses Gemini AI to generate a concise 1-sentence verification explanation for matched items."""
+        api_key = settings.GEMINI_API_KEY
+        if not api_key:
+            return None
+
+        prompt = (
+            f"You are a campus lost & found matching engine. Explain in ONE short, friendly sentence "
+            f"(under 25 words) why these two reports appear to be the same physical item.\n"
+            f"Lost Report: '{lost_title} - {lost_desc}'\n"
+            f"Found Report: '{found_title} - {found_desc}'"
+        )
+
+        for model_name in ["models/gemini-3.6-flash", "models/gemini-flash-latest", "models/gemini-3.7-flash"]:
+            try:
+                url = f"https://generativelanguage.googleapis.com/v1beta/{model_name}:generateContent?key={api_key}"
+                payload = {
+                    "contents": [{"parts": [{"text": prompt}]}],
+                    "generationConfig": {"maxOutputTokens": 60, "temperature": 0.2}
+                }
+                req = urllib.request.Request(
+                    url,
+                    data=json.dumps(payload).encode("utf-8"),
+                    headers={"Content-Type": "application/json"}
+                )
+                with urllib.request.urlopen(req, timeout=5) as resp:
+                    res = json.loads(resp.read().decode("utf-8"))
+                    text = res["candidates"][0]["content"]["parts"][0]["text"].strip()
+                    return text
+            except Exception:
+                continue
+
+        return None
 
     def get_text_embedding(self, text: str) -> np.ndarray:
         """Generates 512-dim normalized text embedding."""
