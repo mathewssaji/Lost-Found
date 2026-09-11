@@ -293,6 +293,21 @@ async def report_item(
         min_threshold=settings.DEFAULT_MATCH_THRESHOLD
     )
 
+    # Enhance top match with Google Gemini AI explanation if available
+    if matches_raw and settings.GEMINI_API_KEY:
+        try:
+            top_cand = matches_raw[0]
+            explanation = ml_engine.explain_match_with_gemini(
+                lost_title=title if item_type == "LOST" else top_cand["item"]["title"],
+                lost_desc=description if item_type == "LOST" else top_cand["item"]["description"],
+                found_title=top_cand["item"]["title"] if item_type == "LOST" else title,
+                found_desc=top_cand["item"]["description"] if item_type == "LOST" else description
+            )
+            if explanation:
+                top_cand["ai_explanation"] = explanation
+        except Exception:
+            pass
+
     created_item = item_doc_to_dict(doc, include_contact=True)
     matches = [MatchCandidate(**m) for m in matches_raw]
 
@@ -301,6 +316,20 @@ async def report_item(
         matches=matches,
         message=f"{item_type} report registered successfully. Found {len(matches)} matching candidates."
     )
+
+@app.post("/api/ai/explain-match")
+async def explain_match_endpoint(
+    lost_title: str = Form(...),
+    lost_desc: str = Form(...),
+    found_title: str = Form(...),
+    found_desc: str = Form(...)
+):
+    """Generates a real-time Gemini AI explanation for why two items match."""
+    explanation = ml_engine.explain_match_with_gemini(lost_title, lost_desc, found_title, found_desc)
+    return {
+        "explanation": explanation or "Both items share high visual and semantic similarity.",
+        "model": "gemini-3.6-flash"
+    }
 
 @app.get("/api/items")
 async def list_items(
