@@ -71,13 +71,15 @@ except Exception:
 if (FRONTEND_DIR / "static").exists():
     app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR / "static")), name="static")
 
+import asyncio
+import time
+
 @app.middleware("http")
 async def db_connection_middleware(request, call_next):
-    if not db_manager.is_connected:
-        try:
-            await connect_to_mongo()
-        except Exception:
-            pass
+    # Non-blocking connection check: never stall user requests
+    if not db_manager.is_connected and not db_manager.is_connecting:
+        if time.time() - db_manager.last_attempt_time > 45.0:
+            asyncio.create_task(connect_to_mongo())
     return await call_next(request)
 
 # ----------------- API ENDPOINTS -----------------
