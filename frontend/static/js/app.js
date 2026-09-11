@@ -669,6 +669,15 @@ function openMatchResultsDrawer(submittedItem, matches) {
                 <h5 class="font-bold text-slate-900 dark:text-white text-sm mt-1.5">${item.title}</h5>
                 <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">${item.description}</p>
 
+                ${match.ai_explanation ? `
+                  <div class="mt-2.5 p-2.5 rounded-xl bg-indigo-50/90 dark:bg-indigo-950/60 border border-indigo-200/80 dark:border-indigo-800/80 flex items-start gap-2">
+                    <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    <p class="text-[11px] text-indigo-900 dark:text-indigo-200 leading-snug">
+                      <strong class="text-indigo-700 dark:text-indigo-300 font-bold">✨ Gemini AI Analysis:</strong> ${match.ai_explanation}
+                    </p>
+                  </div>
+                ` : ''}
+
                 <div class="flex flex-wrap gap-1.5 mt-2.5">
                   <span class="text-[11px] px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-700/80 text-slate-600 dark:text-slate-300">
                     Vector: ${(match.vec_score * 100).toFixed(0)}%
