@@ -36,6 +36,7 @@ class MatchCandidate(BaseModel):
     cat_score: float = Field(..., description="Category score (1.0 or 0.2)")
     loc_score: float = Field(..., description="Location score (1.0 or 0.6)")
     is_high_confidence: bool = Field(..., description="True if score >= 82%")
+    ai_explanation: Optional[str] = Field(None, description="Gemini AI 1-sentence match explanation")
 
 class ItemCreateResult(BaseModel):
     item: ItemResponse
