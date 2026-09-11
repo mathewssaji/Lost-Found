@@ -40,6 +40,11 @@ class Settings:
     ITEMS_COLLECTION: str = "items"
     ATLAS_VECTOR_INDEX_NAME: str = os.getenv("ATLAS_VECTOR_INDEX_NAME", "vector_index")
 
+    # Google Gemini AI Settings
+    GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
+    GEMINI_VISION_MODEL: str = "models/gemini-3.6-flash"
+    GEMINI_EMBEDDING_MODEL: str = "models/gemini-embedding-2"
+
     # Multimodal Embedding Model
     CLIP_MODEL_NAME: str = os.getenv("CLIP_MODEL_NAME", "openai/clip-vit-base-patch32")
     EMBEDDING_DIM: int = 512
